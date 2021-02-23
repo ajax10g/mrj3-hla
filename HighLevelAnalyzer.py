@@ -49,6 +49,10 @@ class Hla(HighLevelAnalyzer):
             pass
         self.myHlaFrame = AnalyzerFrame('message', frame.start_time, frame.end_time, {'str':''})
 
+    def bracketed(self, string):
+        ret = "[" + string + "]"
+        return ret
+
     def decode(self, frame: AnalyzerFrame):
         '''
         Process a frame from the input analyzer, and optionally return a single `AnalyzerFrame` or a list of `AnalyzerFrame`s.
@@ -79,14 +83,14 @@ class Hla(HighLevelAnalyzer):
                 comment = "~" + str(frameValue-0x37)
             else:
                 comment = ""
-            hlaMsg = "STA=" + chr(frameValue) + comment
+            hlaMsg = "STA=" + self.bracketed(chr(frameValue)) + comment
             self.initHlaFrame(frame)
         elif sm.is_Cmd:
             if sm.tick == 0:
-                hlaMsg = "CMD=" + chr(frameValue)
+                hlaMsg = "CMD=" + self.bracketed(chr(frameValue))
                 self.initHlaFrame(frame)
             else:
-                hlaMsg = chr(frameValue)
+                hlaMsg = self.bracketed(chr(frameValue))
                 myRet.end_time = frame.end_time
                 myRet = None
         elif sm.is_Stx:
@@ -94,18 +98,18 @@ class Hla(HighLevelAnalyzer):
             self.initHlaFrame(frame)
         elif sm.is_Datano:
             if sm.tick == 0:
-                hlaMsg = "Data No=" + chr(frameValue)
+                hlaMsg = "Data No=" + self.bracketed(chr(frameValue))
                 self.initHlaFrame(frame)
             else:
-                hlaMsg = chr(frameValue)
+                hlaMsg = self.bracketed(chr(frameValue))
                 myRet.end_time = frame.end_time
                 myRet = None
         elif sm.is_Data:
             if sm.tick == 0:
-                hlaMsg = "Data=" + chr(frameValue)
+                hlaMsg = "Data=" + self.bracketed(chr(frameValue))
                 self.initHlaFrame(frame)
             else:
-                hlaMsg = chr(frameValue)
+                hlaMsg = self.bracketed(chr(frameValue))
                 myRet.end_time = frame.end_time
                 myRet = None
         elif sm.is_Etx:
@@ -113,10 +117,10 @@ class Hla(HighLevelAnalyzer):
                 self.initHlaFrame(frame)
         elif sm.is_Chk:
             if sm.tick == 0:
-                hlaMsg = "Chk=" + chr(frameValue)
+                hlaMsg = "Chk=" + self.bracketed(chr(frameValue))
                 self.initHlaFrame(frame)
             else:
-                hlaMsg = chr(frameValue)
+                hlaMsg = self.bracketed(chr(frameValue))
                 myRet.end_time = frame.end_time
         elif sm.is_Stx2:
             hlaMsg = "STX"
@@ -126,10 +130,10 @@ class Hla(HighLevelAnalyzer):
                 comment = "~" + str(frameValue-0x37)
             else:
                 comment = ""
-            hlaMsg = "STA=" + chr(frameValue) + comment
+            hlaMsg = "STA=" + self.bracketed(chr(frameValue)) + comment
             self.initHlaFrame(frame)
         elif sm.is_Err:
-            hlaMsg = "ERR=" + chr(frameValue)
+            hlaMsg = "ERR=" + self.bracketed(chr(frameValue))
             self.initHlaFrame(frame)
 
         try:
