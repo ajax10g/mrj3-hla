@@ -1,0 +1,13 @@
+{
+  "name": "mrj3-hla",
+  "apiVersion": "1.0.0",
+  "author": "Cung Pham",
+  "version": "0.0.1",
+  "description": "Decode the Mitsubishi servo amp communication protocol on async RS-422",
+  "extensions": {
+    "mrj3-hla": {
+      "type": "HighLevelAnalyzer",
+      "entryPoint": "HighLevelAnalyzer.Hla"
+    }
+  }
+}
