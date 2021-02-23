@@ -2,11 +2,13 @@
 # For more information and documentation, please go to https://support.saleae.com/extensions/high-level-analyzer-extensions
 
 from saleae.analyzers import HighLevelAnalyzer, AnalyzerFrame, StringSetting, NumberSetting, ChoicesSetting
+from HlaSM import HlaSM
 
 SOH = 0x01
 STX = 0x02
 ETX = 0x03
 EOT = 0x04
+sm = HlaSM()
 
 # High level analyzers must subclass the HighLevelAnalyzer class.
 class Hla(HighLevelAnalyzer):
@@ -23,12 +25,7 @@ class Hla(HighLevelAnalyzer):
     }
 
     prefix = StringSetting(label='Message Prefix (optional)')
-    frameIndex = 0
     myHlaFrame = None
-    # newMsgFlag = True
-    # prevStartTime = 0
-    etxFlag = False
-    chksumFlag = False
 
     def __init__(self):
         '''
@@ -43,6 +40,7 @@ class Hla(HighLevelAnalyzer):
 
         # print("Settings:", self.my_string_setting,
         #       self.my_number_setting, self.my_choices_setting)
+
 
     def initHlaFrame(self, frame):
         try:
@@ -68,65 +66,77 @@ class Hla(HighLevelAnalyzer):
 
         frameValue = frame.data["data"][0]
 
-        if self.frameIndex == 0:
-            if frameValue == SOH:
+        """"""
+        sm.update(frame)
+
+        """"""
+
+        if sm.is_Soh:
                 hlaMsg = "SOH"
                 self.initHlaFrame(frame)
-        elif self.frameIndex == 1:
+        elif sm.is_Sta:
             if ord('A') <= frameValue <= ord('V'):
                 comment = "~" + str(frameValue-0x37)
             else:
                 comment = ""
             hlaMsg = "STA=" + chr(frameValue) + comment
             self.initHlaFrame(frame)
-        elif self.frameIndex == 2:
-            hlaMsg = "CMD=" + chr(frameValue)
-            self.initHlaFrame(frame)
-        elif self.frameIndex == 3:
-            hlaMsg = chr(frameValue)
-            myRet.end_time = frame.end_time
-            myRet = None
-        elif self.frameIndex == 4:
-            if frameValue == STX:
-                hlaMsg = "STX"
-                self.initHlaFrame(frame)
-        elif self.frameIndex == 5:
-            hlaMsg = "Data No=" + chr(frameValue)
-            self.initHlaFrame(frame)
-        elif self.frameIndex == 6:
-            hlaMsg = chr(frameValue)
-            myRet.end_time = frame.end_time
-            myRet = None
-        elif self.frameIndex == 7:
-            if frameValue == ETX:
-                hlaMsg = "ETX"
-                self.etxFlag = True
+        elif sm.is_Cmd:
+            if sm.tick == 0:
+                hlaMsg = "CMD=" + chr(frameValue)
                 self.initHlaFrame(frame)
             else:
+                hlaMsg = chr(frameValue)
+                myRet.end_time = frame.end_time
+                myRet = None
+        elif sm.is_Stx:
+            hlaMsg = "STX"
+            self.initHlaFrame(frame)
+        elif sm.is_Datano:
+            if sm.tick == 0:
+                hlaMsg = "Data No=" + chr(frameValue)
+                self.initHlaFrame(frame)
+            else:
+                hlaMsg = chr(frameValue)
+                myRet.end_time = frame.end_time
+                myRet = None
+        elif sm.is_Data:
+            if sm.tick == 0:
                 hlaMsg = "Data=" + chr(frameValue)
                 self.initHlaFrame(frame)
-        else:
-            if not self.etxFlag:
-                if frameValue != ETX:
-                    hlaMsg = chr(frameValue)
-                    myRet.end_time = frame.end_time
-                    myRet = None
-                else:
-                    hlaMsg = "ETX"
-                    self.etxFlag = True
-                    self.initHlaFrame(frame)
             else:
-                if not self.chksumFlag:
-                    hlaMsg = "Chk=" + chr(frameValue)
-                    self.initHlaFrame(frame)
-                    self.chksumFlag = True
-                else:
-                    hlaMsg = chr(frameValue)
-                    myRet.end_time = frame.end_time
+                hlaMsg = chr(frameValue)
+                myRet.end_time = frame.end_time
+                myRet = None
+        elif sm.is_Etx:
+                hlaMsg = "ETX"
+                self.initHlaFrame(frame)
+        elif sm.is_Chk:
+            if sm.tick == 0:
+                hlaMsg = "Chk=" + chr(frameValue)
+                self.initHlaFrame(frame)
+            else:
+                hlaMsg = chr(frameValue)
+                myRet.end_time = frame.end_time
+        elif sm.is_Stx2:
+            hlaMsg = "STX"
+            self.initHlaFrame(frame)
+        elif sm.is_Sta2:
+            if ord('A') <= frameValue <= ord('V'):
+                comment = "~" + str(frameValue-0x37)
+            else:
+                comment = ""
+            hlaMsg = "STA=" + chr(frameValue) + comment
+            self.initHlaFrame(frame)
+        elif sm.is_Err:
+            hlaMsg = "ERR=" + chr(frameValue)
+            self.initHlaFrame(frame)
 
-
-        self.myHlaFrame.data["str"] += hlaMsg
-        self.frameIndex +=1
+        try:
+            self.myHlaFrame.data["str"] += hlaMsg
+        except:
+            pass
+        # self.frameIndex +=1
 
         # Return the data frame itself
         # return AnalyzerFrame('mytype', frame.start_time, frame.end_time, {
