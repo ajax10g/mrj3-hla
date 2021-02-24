@@ -8,7 +8,6 @@ SOH = 0x01
 STX = 0x02
 ETX = 0x03
 EOT = 0x04
-sm = HlaSM()
 
 # High level analyzers must subclass the HighLevelAnalyzer class.
 class Hla(HighLevelAnalyzer):
@@ -26,6 +25,8 @@ class Hla(HighLevelAnalyzer):
 
     prefix = StringSetting(label='Message Prefix (optional)')
     myHlaFrame = None
+    listHlaFrame = []
+    sm = None
 
     def __init__(self):
         '''
@@ -40,7 +41,8 @@ class Hla(HighLevelAnalyzer):
 
         # print("Settings:", self.my_string_setting,
         #       self.my_number_setting, self.my_choices_setting)
-
+        
+        self.sm = HlaSM()
 
     def initHlaFrame(self, frame):
         try:
@@ -48,6 +50,7 @@ class Hla(HighLevelAnalyzer):
         except:
             pass
         self.myHlaFrame = AnalyzerFrame('message', frame.start_time, frame.end_time, {'str':''})
+        return self.myHlaFrame
 
     def bracketed(self, string):
         ret = "[" + string + "]"
@@ -61,89 +64,118 @@ class Hla(HighLevelAnalyzer):
         '''
 
         # setup initial result, if not present
-        first_frame = False
         hlaMsg = "Unknown"
-        myRet = self.myHlaFrame
-
-        if self.myHlaFrame is None:
-            first_frame = True
+        myRet = None
 
         frameValue = frame.data["data"][0]
 
         """"""
-        sm.update(frame)
+        self.sm.update(frame)
 
         """"""
 
-        if sm.is_Soh:
+        if self.sm.is_Soh:
                 hlaMsg = "SOH"
-                self.initHlaFrame(frame)
-        elif sm.is_Sta:
+                self.listHlaFrame.clear() 
+                _frame = self.initHlaFrame(frame)
+                _frame.data["str"] += hlaMsg
+                self.listHlaFrame.append(_frame)
+        elif self.sm.is_Sta:
             if ord('A') <= frameValue <= ord('V'):
                 comment = "~" + str(frameValue-0x37)
             else:
                 comment = ""
             hlaMsg = "STA=" + self.bracketed(chr(frameValue)) + comment
-            self.initHlaFrame(frame)
-        elif sm.is_Cmd:
-            if sm.tick == 0:
+            _frame = self.initHlaFrame(frame)
+            _frame.data["str"] += hlaMsg
+            self.listHlaFrame.append(_frame)
+        elif self.sm.is_Cmd:
+            if self.sm.tick == 0:
                 hlaMsg = "CMD=" + self.bracketed(chr(frameValue))
-                self.initHlaFrame(frame)
+                _frame = self.initHlaFrame(frame)
+                _frame.data["str"] += hlaMsg
+                self.listHlaFrame.append(_frame)
             else:
                 hlaMsg = self.bracketed(chr(frameValue))
-                myRet.end_time = frame.end_time
-                myRet = None
-        elif sm.is_Stx:
+                _frame = self.listHlaFrame[-1]
+                _frame.end_time = frame.end_time
+                _frame.data["str"] += hlaMsg
+        elif self.sm.is_Stx:
             hlaMsg = "STX"
-            self.initHlaFrame(frame)
-        elif sm.is_Datano:
-            if sm.tick == 0:
+            _frame = self.initHlaFrame(frame)
+            _frame.data["str"] += hlaMsg
+            self.listHlaFrame.append(_frame)
+        elif self.sm.is_Datano:
+            if self.sm.tick == 0:
                 hlaMsg = "Data No=" + self.bracketed(chr(frameValue))
-                self.initHlaFrame(frame)
+                _frame = self.initHlaFrame(frame)
+                _frame.data["str"] += hlaMsg
+                self.listHlaFrame.append(_frame)
             else:
                 hlaMsg = self.bracketed(chr(frameValue))
-                myRet.end_time = frame.end_time
-                myRet = None
-        elif sm.is_Data:
-            if sm.tick == 0:
+                _frame = self.listHlaFrame[-1]
+                _frame.end_time = frame.end_time
+                _frame.data["str"] += hlaMsg
+        elif self.sm.is_Data:
+            if self.sm.tick == 0:
                 hlaMsg = "Data=" + self.bracketed(chr(frameValue))
-                self.initHlaFrame(frame)
+                _frame = self.initHlaFrame(frame)
+                _frame.data["str"] += hlaMsg
+                self.listHlaFrame.append(_frame)
             else:
                 hlaMsg = self.bracketed(chr(frameValue))
-                myRet.end_time = frame.end_time
-                myRet = None
-        elif sm.is_Etx:
+                _frame = self.listHlaFrame[-1]
+                _frame.end_time = frame.end_time
+                _frame.data["str"] += hlaMsg
+        elif self.sm.is_Etx:
                 hlaMsg = "ETX"
-                self.initHlaFrame(frame)
-        elif sm.is_Chk:
-            if sm.tick == 0:
+                _frame = self.initHlaFrame(frame)
+                _frame.data["str"] += hlaMsg
+                self.listHlaFrame.append(_frame)
+        elif self.sm.is_Chk:
+            if self.sm.tick == 0:
                 hlaMsg = "Chk=" + self.bracketed(chr(frameValue))
-                self.initHlaFrame(frame)
+                _frame = self.initHlaFrame(frame)
+                _frame.data["str"] += hlaMsg
+                self.listHlaFrame.append(_frame)
             else:
                 hlaMsg = self.bracketed(chr(frameValue))
-                myRet.end_time = frame.end_time
-        elif sm.is_Stx2:
+                _frame = self.listHlaFrame[-1]
+                _frame.end_time = frame.end_time
+                _frame.data["str"] += hlaMsg
+                myRet = self.listHlaFrame
+        elif self.sm.is_Stx2:
             hlaMsg = "STX"
-            self.initHlaFrame(frame)
-        elif sm.is_Sta2:
+            self.listHlaFrame.clear() 
+            _frame = self.initHlaFrame(frame)
+            _frame.data["str"] += hlaMsg
+            self.listHlaFrame.append(_frame)
+        elif self.sm.is_Sta2:
             if ord('A') <= frameValue <= ord('V'):
                 comment = "~" + str(frameValue-0x37)
             else:
                 comment = ""
             hlaMsg = "STA=" + self.bracketed(chr(frameValue)) + comment
-            self.initHlaFrame(frame)
-        elif sm.is_Err:
+            _frame = self.initHlaFrame(frame)
+            _frame.data["str"] += hlaMsg
+            self.listHlaFrame.append(_frame)
+        elif self.sm.is_Err:
             hlaMsg = "ERR=" + self.bracketed(chr(frameValue))
-            self.initHlaFrame(frame)
-
-        try:
-            self.myHlaFrame.data["str"] += hlaMsg
-        except:
-            pass
-        # self.frameIndex +=1
+            _frame = self.initHlaFrame(frame)
+            _frame.data["str"] += hlaMsg
+            self.listHlaFrame.append(_frame)
+        elif self.sm.is_Eot:
+            hlaMsg = "EOT"
+            _frame = self.initHlaFrame(frame)
+            _frame.data["str"] += hlaMsg
+            myRet = (_frame)
 
         # Return the data frame itself
         # return AnalyzerFrame('mytype', frame.start_time, frame.end_time, {
         #     'input_type': frame.type
         # })
+
+        if myRet != None:
+            self.sm.update(frame)
+
         return myRet

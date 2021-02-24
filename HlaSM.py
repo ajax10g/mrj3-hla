@@ -23,7 +23,7 @@ class HlaSM(StateMachine):
     Soh = State('Soh')
     Stx = State('Stx')
     Etx = State('Etx')
-    Eot = State('Eto')
+    Eot = State('Eot')
     Sta = State('Sta')
     Cmd = State('Cmd')
     Datano = State('DataNo')
@@ -108,3 +108,5 @@ class HlaSM(StateMachine):
                 self.etx3()
             else:
                 self.data2()
+        elif self.is_Eot:
+                self.idle2()
