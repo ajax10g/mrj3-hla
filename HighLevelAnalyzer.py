@@ -9,6 +9,7 @@ STX = 0x02
 ETX = 0x03
 EOT = 0x04
 
+
 # High level analyzers must subclass the HighLevelAnalyzer class.
 class Hla(HighLevelAnalyzer):
     # List of settings that a user can set for this High Level Analyzer.
@@ -27,6 +28,8 @@ class Hla(HighLevelAnalyzer):
     myHlaFrame = None
     listHlaFrame = []
     sm = None
+    xchksum = 0 # Calculated checksum
+    chksum = 0  # Checksum from data frame represented as ASCII string
 
     def __init__(self):
         '''
@@ -80,6 +83,7 @@ class Hla(HighLevelAnalyzer):
                 _frame = self.initHlaFrame(frame)
                 _frame.data["str"] += hlaMsg
                 self.listHlaFrame.append(_frame)
+                self.xchksum = 0
         elif self.sm.is_Sta:
             if ord('A') <= frameValue <= ord('V'):
                 comment = "~" + str(frameValue-0x37)
@@ -91,6 +95,7 @@ class Hla(HighLevelAnalyzer):
             _frame = self.initHlaFrame(frame)
             _frame.data["str"] += hlaMsg
             self.listHlaFrame.append(_frame)
+            self.xchksum += frameValue
         elif self.sm.is_Cmd:
             if self.sm.tick == 0:
                 hlaMsg = "CMD=" + self.bracketed(chr(frameValue))
@@ -102,11 +107,13 @@ class Hla(HighLevelAnalyzer):
                 _frame = self.listHlaFrame[-1]
                 _frame.end_time = frame.end_time
                 _frame.data["str"] += hlaMsg
+            self.xchksum += frameValue
         elif self.sm.is_Stx:
             hlaMsg = "STX"
             _frame = self.initHlaFrame(frame)
             _frame.data["str"] += hlaMsg
             self.listHlaFrame.append(_frame)
+            self.xchksum += frameValue
         elif self.sm.is_Datano:
             if self.sm.tick == 0:
                 hlaMsg = "Data No=" + self.bracketed(chr(frameValue))
@@ -118,6 +125,7 @@ class Hla(HighLevelAnalyzer):
                 _frame = self.listHlaFrame[-1]
                 _frame.end_time = frame.end_time
                 _frame.data["str"] += hlaMsg
+            self.xchksum += frameValue
         elif self.sm.is_Data:
             if self.sm.tick == 0:
                 hlaMsg = "Data=" + self.bracketed(chr(frameValue))
@@ -129,19 +137,28 @@ class Hla(HighLevelAnalyzer):
                 _frame = self.listHlaFrame[-1]
                 _frame.end_time = frame.end_time
                 _frame.data["str"] += hlaMsg
+            self.xchksum += frameValue
         elif self.sm.is_Etx:
-                hlaMsg = "ETX"
-                _frame = self.initHlaFrame(frame)
-                _frame.data["str"] += hlaMsg
-                self.listHlaFrame.append(_frame)
+            hlaMsg = "ETX"
+            _frame = self.initHlaFrame(frame)
+            _frame.data["str"] += hlaMsg
+            self.listHlaFrame.append(_frame)
+            self.xchksum += frameValue
         elif self.sm.is_Chk:
             if self.sm.tick == 0:
                 hlaMsg = "Chk=" + self.bracketed(chr(frameValue))
                 _frame = self.initHlaFrame(frame)
                 _frame.data["str"] += hlaMsg
                 self.listHlaFrame.append(_frame)
+                self.chksum = chr(frameValue)
             else:
-                hlaMsg = self.bracketed(chr(frameValue))
+                comment = ""
+                self.chksum += chr(frameValue)
+
+                # Only the last two bytes of the calculated checsum, xchecksum, are relevant
+                if (0xff & self.xchksum )!= int(self.chksum, 16):
+                    comment = "(error)"
+                hlaMsg = self.bracketed(chr(frameValue)) + comment
                 _frame = self.listHlaFrame[-1]
                 _frame.end_time = frame.end_time
                 _frame.data["str"] += hlaMsg
@@ -152,6 +169,7 @@ class Hla(HighLevelAnalyzer):
             _frame = self.initHlaFrame(frame)
             _frame.data["str"] += hlaMsg
             self.listHlaFrame.append(_frame)
+            self.xchksum = 0
         elif self.sm.is_Sta2:
             if ord('A') <= frameValue <= ord('V'):
                 comment = "~" + str(frameValue-0x37)
@@ -163,21 +181,18 @@ class Hla(HighLevelAnalyzer):
             _frame = self.initHlaFrame(frame)
             _frame.data["str"] += hlaMsg
             self.listHlaFrame.append(_frame)
+            self.xchksum += frameValue
         elif self.sm.is_Err:
             hlaMsg = "ERR=" + self.bracketed(chr(frameValue))
             _frame = self.initHlaFrame(frame)
             _frame.data["str"] += hlaMsg
             self.listHlaFrame.append(_frame)
+            self.xchksum += frameValue
         elif self.sm.is_Eot:
             hlaMsg = "EOT"
             _frame = self.initHlaFrame(frame)
             _frame.data["str"] += hlaMsg
             myRet = (_frame)
-
-        # Return the data frame itself
-        # return AnalyzerFrame('mytype', frame.start_time, frame.end_time, {
-        #     'input_type': frame.type
-        # })
 
         if myRet != None:
             self.sm.update(frame)
