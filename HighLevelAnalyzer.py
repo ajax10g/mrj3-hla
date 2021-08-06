@@ -156,8 +156,12 @@ class Hla(HighLevelAnalyzer):
                 self.chksum += chr(frameValue)
 
                 # Only the last two bytes of the calculated checsum, xchecksum, are relevant
-                if (0xff & self.xchksum )!= int(self.chksum, 16):
-                    comment = "(error)"
+                try:
+                    if (0xff & self.xchksum )!= int(self.chksum, 16):
+                        comment = "(error)"
+                except:
+                    pass
+
                 hlaMsg = self.bracketed(chr(frameValue)) + comment
                 _frame = self.listHlaFrame[-1]
                 _frame.end_time = frame.end_time
