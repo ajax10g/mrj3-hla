@@ -83,8 +83,10 @@ class Hla(HighLevelAnalyzer):
         elif self.sm.is_Sta:
             if ord('A') <= frameValue <= ord('V'):
                 comment = "~" + str(frameValue-0x37)
-            else:
+            elif ord('1') <= frameValue <= ord('9'):
                 comment = ""
+            else:
+                comment = "(error)"
             hlaMsg = "STA=" + self.bracketed(chr(frameValue)) + comment
             _frame = self.initHlaFrame(frame)
             _frame.data["str"] += hlaMsg
@@ -153,8 +155,10 @@ class Hla(HighLevelAnalyzer):
         elif self.sm.is_Sta2:
             if ord('A') <= frameValue <= ord('V'):
                 comment = "~" + str(frameValue-0x37)
-            else:
+            elif ord('1') <= frameValue <= ord('9'):
                 comment = ""
+            else:
+                comment = "(error)"
             hlaMsg = "STA=" + self.bracketed(chr(frameValue)) + comment
             _frame = self.initHlaFrame(frame)
             _frame.data["str"] += hlaMsg
