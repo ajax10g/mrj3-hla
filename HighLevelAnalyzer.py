@@ -3,6 +3,7 @@
 
 from saleae.analyzers import HighLevelAnalyzer, AnalyzerFrame, StringSetting, NumberSetting, ChoicesSetting
 from HlaSM import HlaSM
+import re
 
 SOH = 0x01
 STX = 0x02
@@ -10,7 +11,7 @@ ETX = 0x03
 EOT = 0x04
 
 
-# High level analyzers must subclass the HighLevelAnalyzer class.
+# High level analyzers must be a subclass of the HighLevelAnalyzer class.
 class Hla(HighLevelAnalyzer):
     # List of settings that a user can set for this High Level Analyzer.
     # my_string_setting = StringSetting()
@@ -59,6 +60,13 @@ class Hla(HighLevelAnalyzer):
         ret = "[" + string + "]"
         return ret
 
+    def char(self, byte):
+        # c = chr(byte)
+        c = re.sub(r'[^a-zA-Z0-9]', '.', chr(byte))
+        # ret = c if c.isalnum() else '.'
+        ret = c
+        return ret
+    
     def decode(self, frame: AnalyzerFrame):
         '''
         Process a frame from the input analyzer, and optionally return a single `AnalyzerFrame` or a list of `AnalyzerFrame`s.
@@ -91,69 +99,72 @@ class Hla(HighLevelAnalyzer):
                 comment = ""
             else:
                 comment = "(error)"
-            hlaMsg = "STA=" + self.bracketed(chr(frameValue)) + comment
+            hlaMsg = "STA=" + self.bracketed(self.char(frameValue)) + comment
             _frame = self.initHlaFrame(frame)
             _frame.data["str"] += hlaMsg
             self.listHlaFrame.append(_frame)
             self.xchksum += frameValue
         elif self.sm.is_Cmd:
             if self.sm.tick == 0:
-                hlaMsg = "CMD=" + self.bracketed(chr(frameValue))
+                hlaMsg = "CMD=" + self.bracketed(self.char(frameValue))
                 _frame = self.initHlaFrame(frame)
                 _frame.data["str"] += hlaMsg
                 self.listHlaFrame.append(_frame)
             else:
-                hlaMsg = self.bracketed(chr(frameValue))
+                hlaMsg = self.bracketed(self.char(frameValue))
                 _frame = self.listHlaFrame[-1]
                 _frame.end_time = frame.end_time
                 _frame.data["str"] += hlaMsg
             self.xchksum += frameValue
         elif self.sm.is_Stx:
-            hlaMsg = "STX"
+            hlaMsg = "STX" + ('(error)' if not frameValue==STX else '')
             _frame = self.initHlaFrame(frame)
             _frame.data["str"] += hlaMsg
             self.listHlaFrame.append(_frame)
             self.xchksum += frameValue
         elif self.sm.is_Datano:
             if self.sm.tick == 0:
-                hlaMsg = "Data No=" + self.bracketed(chr(frameValue))
+                hlaMsg = "Data No=" + self.bracketed(self.char(frameValue))
                 _frame = self.initHlaFrame(frame)
                 _frame.data["str"] += hlaMsg
                 self.listHlaFrame.append(_frame)
             else:
-                hlaMsg = self.bracketed(chr(frameValue))
+                hlaMsg = self.bracketed(self.char(frameValue))
                 _frame = self.listHlaFrame[-1]
                 _frame.end_time = frame.end_time
                 _frame.data["str"] += hlaMsg
             self.xchksum += frameValue
         elif self.sm.is_Data:
             if self.sm.tick == 0:
-                hlaMsg = "Data=" + self.bracketed(chr(frameValue))
+                hlaMsg = "Data=" + self.bracketed(self.char(frameValue))
                 _frame = self.initHlaFrame(frame)
                 _frame.data["str"] += hlaMsg
                 self.listHlaFrame.append(_frame)
             else:
-                hlaMsg = self.bracketed(chr(frameValue))
+                hlaMsg = self.bracketed(self.char(frameValue))
                 _frame = self.listHlaFrame[-1]
                 _frame.end_time = frame.end_time
                 _frame.data["str"] += hlaMsg
             self.xchksum += frameValue
         elif self.sm.is_Etx:
-            hlaMsg = "ETX"
+            hlaMsg = "ETX" + ('(error)' if not frameValue==ETX else '')
             _frame = self.initHlaFrame(frame)
             _frame.data["str"] += hlaMsg
             self.listHlaFrame.append(_frame)
             self.xchksum += frameValue
         elif self.sm.is_Chk:
             if self.sm.tick == 0:
-                hlaMsg = "Chk=" + self.bracketed(chr(frameValue))
+                hlaMsg = "Chk=" + self.bracketed(self.char(frameValue))
                 _frame = self.initHlaFrame(frame)
                 _frame.data["str"] += hlaMsg
                 self.listHlaFrame.append(_frame)
                 self.chksum = chr(frameValue)
             else:
                 comment = ""
-                self.chksum += chr(frameValue)
+                try:
+                    self.chksum += chr(frameValue)
+                except:
+                    pass
 
                 # Only the last two bytes of the calculated checsum, xchecksum, are relevant
                 try:
@@ -162,7 +173,7 @@ class Hla(HighLevelAnalyzer):
                 except:
                     pass
 
-                hlaMsg = self.bracketed(chr(frameValue)) + comment
+                hlaMsg = self.bracketed(self.char(frameValue)) + comment
                 _frame = self.listHlaFrame[-1]
                 _frame.end_time = frame.end_time
                 _frame.data["str"] += hlaMsg
@@ -181,13 +192,13 @@ class Hla(HighLevelAnalyzer):
                 comment = ""
             else:
                 comment = "(error)"
-            hlaMsg = "STA=" + self.bracketed(chr(frameValue)) + comment
+            hlaMsg = "STA=" + self.bracketed(self.char(frameValue)) + comment
             _frame = self.initHlaFrame(frame)
             _frame.data["str"] += hlaMsg
             self.listHlaFrame.append(_frame)
             self.xchksum += frameValue
         elif self.sm.is_Err:
-            hlaMsg = "ERR=" + self.bracketed(chr(frameValue))
+            hlaMsg = "ERR=" + self.bracketed(self.char(frameValue))
             _frame = self.initHlaFrame(frame)
             _frame.data["str"] += hlaMsg
             self.listHlaFrame.append(_frame)
