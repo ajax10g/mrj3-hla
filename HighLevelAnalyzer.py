@@ -62,7 +62,7 @@ class Hla(HighLevelAnalyzer):
 
     def char(self, byte):
         # c = chr(byte)
-        c = re.sub(r'[^a-zA-Z0-9]', '.', chr(byte))
+        c = re.sub(r'[^a-zA-Z0-9 -_.,!\"\'/$]', '.', chr(byte))
         # ret = c if c.isalnum() else '.'
         ret = c
         return ret
@@ -136,12 +136,14 @@ class Hla(HighLevelAnalyzer):
             self.xchksum += frameValue
         elif self.sm.is_Data:
             if self.sm.tick == 0:
-                hlaMsg = "Data=" + self.bracketed(self.char(frameValue))
+                # hlaMsg = "Data=" + self.bracketed(self.char(frameValue))
+                hlaMsg = "]Data[=" + self.char(frameValue)
                 _frame = self.initHlaFrame(frame)
                 _frame.data["str"] += hlaMsg
                 self.listHlaFrame.append(_frame)
             else:
-                hlaMsg = self.bracketed(self.char(frameValue))
+                # hlaMsg = self.bracketed(self.char(frameValue))
+                hlaMsg = self.char(frameValue)
                 _frame = self.listHlaFrame[-1]
                 _frame.end_time = frame.end_time
                 _frame.data["str"] += hlaMsg
@@ -203,11 +205,11 @@ class Hla(HighLevelAnalyzer):
             _frame.data["str"] += hlaMsg
             self.listHlaFrame.append(_frame)
             self.xchksum += frameValue
-        elif self.sm.is_Eot:
-            hlaMsg = "EOT"
-            _frame = self.initHlaFrame(frame)
-            _frame.data["str"] += hlaMsg
-            myRet = (_frame)
+        # elif self.sm.is_Eot:
+        #     hlaMsg = "EOT"
+        #     _frame = self.initHlaFrame(frame)
+        #     _frame.data["str"] += hlaMsg
+        #     myRet = (_frame)
 
         if myRet != None:
             self.sm.update(frame)
